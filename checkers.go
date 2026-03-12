@@ -254,13 +254,14 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	if err != nil {
 		return fmt.Errorf("could not go to square %s: %w", move.From, err)
 	}
+	time.Sleep(time.Millisecond * 1000)
 
 	// Grab it
 	grabbed, err := s.gripper.Grab(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("could not grab piece: %w", err)
 	}
-	time.Sleep(time.Millisecond * 250)
+	time.Sleep(time.Millisecond * 1000)
 	s.logger.Infof("We grabbed the piece: %v", grabbed)
 
 	// Move up a bit
@@ -268,19 +269,21 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	if err != nil {
 		return fmt.Errorf("could not move up after grabbing: %w", err)
 	}
+	time.Sleep(time.Millisecond * 1000)
 
 	// Move to the "to" square
 	_, err = s.GoToSquare(ctx, move.To)
 	if err != nil {
 		return fmt.Errorf("could not go to square %s: %w", move.To, err)
 	}
+	time.Sleep(time.Millisecond * 1000)
 
 	// Release it
 	err = s.gripper.Open(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("could not release piece: %w", err)
 	}
-	time.Sleep(time.Millisecond * 250)
+	time.Sleep(time.Millisecond * 1000)
 
 	s.logger.Infof("Moved piece from %s to %s", move.From, move.To)
 
