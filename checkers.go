@@ -124,7 +124,6 @@ func checkersConstructor(ctx context.Context, deps resource.Dependencies, rawCon
 	return NewCheckers(ctx, deps, rawConf.ResourceName(), conf, logger)
 }
 
-
 func NewCheckers(ctx context.Context, deps resource.Dependencies, name resource.Name, conf *CheckersConfig, logger logging.Logger) (resource.Resource, error) {
 
 	var err error
@@ -175,8 +174,6 @@ func NewCheckers(ctx context.Context, deps resource.Dependencies, name resource.
 
 	s.gameState = initializeGameState(true) // true for black squares
 
-
-
 	return s, nil
 }
 
@@ -203,9 +200,8 @@ func (s *viamCheckers) goToStart(ctx context.Context) error {
 	return nil
 }
 
-
 func initializeGameState(onBlack bool) GameState {
-	num :=0
+	num := 0
 	if onBlack {
 		num = 0
 	} else {
@@ -234,9 +230,6 @@ func (g *GameState) checkSquare(square string) (PieceInfo, bool) {
 func coordToSquare(x, y int) string {
 	return string(rune('a'+x)) + string(rune('1'+y))
 }
-
-
-
 
 func (s *viamCheckers) Name() resource.Name {
 	return s.name
