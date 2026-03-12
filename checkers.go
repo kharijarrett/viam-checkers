@@ -3,6 +3,7 @@ package viamchess
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -86,6 +87,11 @@ type GameState struct {
 type PieceInfo struct {
 	Type  string
 	Color string
+}
+
+type Move struct {
+	From string
+	To   string
 }
 
 type viamCheckers struct {
@@ -174,6 +180,13 @@ func NewCheckers(ctx context.Context, deps resource.Dependencies, name resource.
 
 	s.gameState = initializeGameState(true) // true for black squares
 
+	s.logger.Infof("Camera named: %s", conf.Camera)
+	s.logger.Infof("PieceFinder named: %s", conf.PieceFinder)
+	s.logger.Infof("Arm named: %s", conf.Arm)
+	s.logger.Infof("Gripper named: %s", conf.Gripper)
+	s.logger.Infof("Pieces on black squares.")
+	s.logger.Infof("Ready to begin!")
+
 	return s, nil
 }
 
@@ -198,6 +211,28 @@ func (s *viamCheckers) goToStart(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func readMoveCommand(cmdMap map[string]interface{}) (Move, error) {
+	cmd, ok := cmdMap["move"].(string)
+	if !ok {
+		return Move{}, fmt.Errorf("missing 'move' field in command")
+	}
+
+	// Split by comma and trim whitespace
+	parts := strings.Split(cmd, ",")
+	if len(parts) != 2 {
+		return Move{}, fmt.Errorf("move command must be in format 'from,to' (e.g., 'b6,a5'), got: %s", cmd)
+	}
+
+	from := strings.TrimSpace(parts[0])
+	to := strings.TrimSpace(parts[1])
+
+	if from == "" || to == "" {
+		return Move{}, fmt.Errorf("from and to positions cannot be empty")
+	}
+
+	return Move{From: from, To: to}, nil
 }
 
 func initializeGameState(onBlack bool) GameState {
@@ -247,6 +282,19 @@ func (s *viamCheckers) DoCommand(ctx context.Context, cmdMap map[string]interfac
 
 	s.doCommandLock.Lock()
 	defer s.doCommandLock.Unlock()
+
+	move, err := readMoveCommand(cmdMap)
+	if err != nil {
+		return nil, err
+	}
+	s.logger.Infof("Received command: %s", move.From+","+move.To)
+
+	defer func() {
+		err := s.goToStart(ctx)
+		if err != nil {
+			s.logger.Errorf("error going to start after DoCommand: %v", err)
+		}
+	}()
 
 	return nil, nil
 }
