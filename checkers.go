@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/geo/r3"
 	"go.viam.com/rdk/components/arm"
 	"go.viam.com/rdk/components/camera"
 	"go.viam.com/rdk/components/gripper"
@@ -19,6 +20,8 @@ import (
 	"go.viam.com/rdk/services/generic"
 	"go.viam.com/rdk/services/motion"
 	"go.viam.com/rdk/services/vision"
+	"go.viam.com/rdk/spatialmath"
+	"go.viam.com/rdk/vision/viscapture"
 	"go.viam.com/utils/trace"
 )
 
@@ -116,6 +119,7 @@ type viamCheckers struct {
 	startPose *referenceframe.PoseInFrame
 
 	gameState GameState
+	visData   viscapture.VisCapture
 
 	doCommandLock   sync.Mutex
 	doCommandCount  atomic.Int32
@@ -235,6 +239,67 @@ func readMoveCommand(cmdMap map[string]interface{}) (Move, error) {
 	return Move{From: from, To: to}, nil
 }
 
+func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
+	// TODO: this function
+
+	defer func() {
+		err := s.goToStart(ctx)
+		if err != nil {
+			s.logger.Errorf("error going to start after MovePiece: %v", err)
+		}
+	}()
+
+	// Go to the "from" square
+	s1Position, err := s.GoToSquare(ctx, move.From)
+	if err != nil {
+		return fmt.Errorf("could not go to square %s: %w", move.From, err)
+	}
+
+	// Grab it
+	grabbed, err := s.gripper.Grab(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not grab piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 250)
+	s.logger.Infof("We grabbed the piece: %v", grabbed)
+
+	// Move up a bit
+	err = s.moveGripper(ctx, r3.Vector{X: s1Position.X, Y: s1Position.Y, Z: grabZ + 200})
+	if err != nil {
+		return fmt.Errorf("could not move up after grabbing: %w", err)
+	}
+
+	// Move to the "to" square
+	_, err = s.GoToSquare(ctx, move.To)
+	if err != nil {
+		return fmt.Errorf("could not go to square %s: %w", move.To, err)
+	}
+
+	// Release it
+	err = s.gripper.Open(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not release piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 250)
+
+	s.logger.Infof("Moved piece from %s to %s", move.From, move.To)
+
+	// TODO: update the game state!
+	return nil
+}
+
+func (s *viamCheckers) GoToSquare(ctx context.Context, square string) (r3.Vector, error) {
+	pos, err := s.findObjectCenter(s.visData, square)
+	if err != nil {
+		return r3.Vector{}, fmt.Errorf("could not find position for square %s: %w", square, err)
+	}
+	err = s.moveGripper(ctx, pos)
+	if err != nil {
+		return r3.Vector{}, fmt.Errorf("could not move gripper to square %s at pos %v: %w", square, pos, err)
+	}
+	return pos, nil
+}
+
 func initializeGameState(onBlack bool) GameState {
 	num := 0
 	if onBlack {
@@ -266,6 +331,51 @@ func coordToSquare(x, y int) string {
 	return string(rune('a'+x)) + string(rune('1'+y))
 }
 
+func (s *viamCheckers) findObjectCenter(data viscapture.VisCapture, square string) (r3.Vector, error) {
+	for _, o := range data.Objects {
+		if strings.HasPrefix(o.Geometry.Label(), square) {
+			md := o.MetaData()
+			center := md.Center()
+			return r3.Vector{
+				X: center.X,
+				Y: center.Y,
+				Z: grabZ,
+			}, nil
+
+		}
+	}
+	return r3.Vector{}, fmt.Errorf("could not find object with label prefix: %s", square)
+}
+
+func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
+	ctx, span := trace.StartSpan(ctx, "moveGripper")
+	defer span.End()
+
+	orientation := &spatialmath.OrientationVectorDegrees{
+		OZ:    -1,
+		Theta: s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta,
+	}
+
+	if p.X > 300 {
+		orientation.OX = (p.X - 300) / 1000
+	}
+
+	if p.Y < -300 {
+		orientation.OY = (p.Y + 300) / 300
+		orientation.OX += .2
+	}
+
+	myPose := spatialmath.NewPose(p, orientation)
+	_, err := s.motion.Move(ctx, motion.MoveReq{
+		ComponentName: s.conf.Gripper,
+		Destination:   referenceframe.NewPoseInFrame("world", myPose),
+	})
+	if err != nil {
+		return fmt.Errorf("can't move to %v: %w", myPose, err)
+	}
+	return nil
+}
+
 func (s *viamCheckers) Name() resource.Name {
 	return s.name
 }
@@ -288,6 +398,14 @@ func (s *viamCheckers) DoCommand(ctx context.Context, cmdMap map[string]interfac
 		return nil, err
 	}
 	s.logger.Infof("Received command: %s", move.From+","+move.To)
+
+	visData, err := s.pieceFinder.CaptureAllFromCamera(ctx, "", viscapture.CaptureOptions{}, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.visData = visData
+
+	s.MovePiece(ctx, move)
 
 	defer func() {
 		err := s.goToStart(ctx)
