@@ -358,7 +358,7 @@ func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
 
 	orientation := &spatialmath.OrientationVectorDegrees{
 		OZ:    -1,
-		Theta: s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta,
+		Theta: s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta + 180,
 	}
 
 	if p.X > 300 {
