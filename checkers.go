@@ -488,9 +488,9 @@ func (s *viamCheckers) isValidMove(move Move) (bool, string) {
 
 	// Determine valid direction based on color
 	validMove := false
-	if piece.Color == "black" && piece.Type == "basic" && toY == fromY+1 {
+	if piece.Color == "black" && piece.Type == "basic" && toY > fromY {
 		validMove = true
-	} else if piece.Color == "white" && piece.Type == "basic" && toY == fromY-1 {
+	} else if piece.Color == "white" && piece.Type == "basic" && toY < fromY {
 		validMove = true
 	}
 
