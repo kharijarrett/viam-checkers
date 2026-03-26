@@ -265,7 +265,7 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 			return fmt.Errorf("could not move to graveyard: %w", err)
 		}
 		// Don't forget that we'll need to update the game state (remove the captured piece)
-		s.gameState.Pieces[capturedSquare] = PieceInfo{}
+		delete(s.gameState.Pieces, capturedSquare)
 	}
 
 
@@ -403,7 +403,7 @@ func (g *GameState) update(move Move) error {
 	// Put the new piece in the square it's going to.
 	g.Pieces[move.To] = pieceFrom
 	// Remove the piece from the old square
-	g.Pieces[move.From] = PieceInfo{}
+	delete(g.Pieces, move.From)
 
 	return nil
 
