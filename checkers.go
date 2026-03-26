@@ -437,7 +437,7 @@ func printBoard(state GameState) map[string]string {
 	}
 
 	out := make(map[string]string, 10)
-	out["r"] = "a b c d e f g h"
+	out["r"] = "  a b c d e f g h"
 
 	// Key: "8".."1", Value: row contents including leading row number.
 	for i := 7; i >= 0; i-- {
