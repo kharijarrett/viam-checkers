@@ -249,49 +249,47 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 		}
 	}()
 
-	if s.isValidMove(move){
-		// Go to the "from" square
-		s1Position, err := s.GoToSquare(ctx, move.From)
-		if err != nil {
-			return fmt.Errorf("could not go to square %s: %w", move.From, err)
-		}
-		time.Sleep(time.Millisecond * 1000)
-
-		// Grab it
-		grabbed, err := s.gripper.Grab(ctx, nil)
-		if err != nil {
-			return fmt.Errorf("could not grab piece: %w", err)
-		}
-		time.Sleep(time.Millisecond * 1500)
-		s.logger.Infof("We grabbed the piece: %v", grabbed)
-
-		// Move up a bit
-		err = s.moveGripper(ctx, r3.Vector{X: s1Position.X, Y: s1Position.Y, Z: gripperGrabZ + 200})
-		if err != nil {
-			return fmt.Errorf("could not move up after grabbing: %w", err)
-		}
-		time.Sleep(time.Millisecond * 1000)
-
-		// Move to the "to" square
-		_, err = s.GoToSquare(ctx, move.To)
-		if err != nil {
-			return fmt.Errorf("could not go to square %s: %w", move.To, err)
-		}
-		time.Sleep(time.Millisecond * 1000)
-
-		// Release it
-		err = s.gripper.Open(ctx, nil)
-		if err != nil {
-			return fmt.Errorf("could not release piece: %w", err)
-		}
-		time.Sleep(time.Millisecond * 1000)
-
-		s.logger.Infof("Moved piece from %s to %s", move.From, move.To)
+	if !s.isValidMove(move){
+		return s.logger.Errorf("invalid move: %s", move)
 	}
+	// Go to the "from" square
+	s1Position, err := s.GoToSquare(ctx, move.From)
+	if err != nil {
+		return fmt.Errorf("could not go to square %s: %w", move.From, err)
+	}
+	time.Sleep(time.Millisecond * 1000)
 
-	// TODO: update the game state!
-	s.gameState.update(move)
-	printBoard(s.gameState)
+	// Grab it
+	grabbed, err := s.gripper.Grab(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not grab piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1500)
+	s.logger.Infof("We grabbed the piece: %v", grabbed)
+
+	// Move up a bit
+	err = s.moveGripper(ctx, r3.Vector{X: s1Position.X, Y: s1Position.Y, Z: gripperGrabZ + 200})
+	if err != nil {
+		return fmt.Errorf("could not move up after grabbing: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	// Move to the "to" square
+	_, err = s.GoToSquare(ctx, move.To)
+	if err != nil {
+		return fmt.Errorf("could not go to square %s: %w", move.To, err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	// Release it
+	err = s.gripper.Open(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not release piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	s.logger.Infof("Moved piece from %s to %s", move.From, move.To)
+	s.gameState.update(move)	
 	s.logger.Infof("Board after move: %s", printBoard(s.gameState))
 
 	return nil
