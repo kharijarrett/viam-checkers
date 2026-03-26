@@ -250,7 +250,8 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	}()
 
 	if !s.isValidMove(move){
-		return s.logger.Errorf("invalid move: %s", move)
+		s.logger.Errorf("invalid move: %s", move)
+		return nil
 	}
 	// Go to the "from" square
 	s1Position, err := s.GoToSquare(ctx, move.From)
