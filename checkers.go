@@ -291,6 +291,8 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 
 	// TODO: update the game state!
 	s.gameState.update(move)
+	printBoard(s.gameState)
+	s.logger.Infof("Board after move: %s", printBoard(s.gameState))
 
 	return nil
 }
@@ -354,6 +356,42 @@ func (g *GameState) update(move Move) error {
 func (g *GameState) checkSquare(square string) (PieceInfo, bool) {
 	piece, exists := g.Pieces[square]
 	return piece, exists
+}
+
+func printBoard(state GameState) string {
+	board := make([][]string, 8)
+	for i := range board {
+		board[i] = make([]string, 8)
+		for j := range board[i] {
+			board[i][j] = "."
+		}
+	}
+
+	// Populate board with pieces
+	for position, piece := range state.Pieces {
+		if len(position) == 2 {
+			col := int(position[0] - 'a')
+			row := int(position[1] - '1')
+			if row >= 0 && row < 8 && col >= 0 && col < 8 {
+				symbol := "B"
+				if piece.Color == "white" {
+					symbol = "W"
+				}
+				board[7-row][col] = symbol
+			}
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("  a b c d e f g h\n")
+	for i := 7; i >= 0; i-- {
+		row := fmt.Sprintf("%d ", i+1)
+		for j := 0; j < 8; j++ {
+			row += board[7-i][j] + " "
+		}
+		b.WriteString(row + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func coordToSquare(x, y int) string {
