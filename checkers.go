@@ -361,14 +361,6 @@ func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
 		Theta: s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta - 180,
 	}
 
-	if p.X > 300 {
-		orientation.OX = (p.X - 300) / 1000
-	}
-
-	if p.Y < -300 {
-		orientation.OY = (p.Y + 300) / 300
-		orientation.OX += .2
-	}
 	s.logger.Infof("The Z value is: %f", p.Z)
 	myPose := spatialmath.NewPose(p, orientation)
 	des := referenceframe.NewPoseInFrame("world", myPose)
