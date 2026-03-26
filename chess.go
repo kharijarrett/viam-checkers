@@ -240,6 +240,7 @@ type cmdStruct struct {
 	Reset bool
 	Wipe  bool
 	Skill float64
+	Hover string
 }
 
 func (s *viamChessChess) DoCommand(ctx context.Context, cmdMap map[string]interface{}) (map[string]interface{}, error) {
@@ -260,6 +261,38 @@ func (s *viamChessChess) DoCommand(ctx context.Context, cmdMap map[string]interf
 	err := mapstructure.Decode(cmdMap, &cmd)
 	if err != nil {
 		return nil, err
+	}
+
+	if cmd.Hover != "" {
+		err := s.goToStart(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		all, err := s.pieceFinder.CaptureAllFromCamera(ctx, "", viscapture.CaptureOptions{}, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		center, err := s.getCenterFor(all, cmd.Hover, nil)
+		if err != nil {
+			return nil, err
+		}
+		center.Z = max(15, center.Z)
+
+		err = s.setupGripper(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.moveGripper(ctx, center)
+		if err != nil {
+			return nil, err
+		}
+
+		time.Sleep(10 * time.Second)
+
+		return map[string]interface{}{"center": center}, nil
 	}
 
 	if cmd.Move.To != "" && cmd.Move.From != "" {
@@ -384,7 +417,7 @@ func (s *viamChessChess) getCenterFor(data viscapture.VisCapture, pos string, th
 		return r3.Vector{}, fmt.Errorf("can't find object for: %s", pos)
 	}
 
-	return getPickupCenter(o), nil
+	return GetPickupCenter(o), nil
 }
 
 func (s *viamChessChess) movePiece(ctx context.Context, data viscapture.VisCapture, theState *state, from, to string, m *chess.Move) error {

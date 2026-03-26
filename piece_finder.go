@@ -388,7 +388,7 @@ func (bc *PieceFinder) CaptureAllFromCamera(ctx context.Context, cameraName stri
 
 		ret.Detections = append(ret.Detections, objectdetection.NewDetectionWithoutImgBounds(s.originalBounds, 1, label))
 
-		highPointInWorld := getPickupCenter(o)
+		highPointInWorld := GetPickupCenter(o)
 
 		highPointInCam, err := bc.rfs.TransformPose(ctx,
 			referenceframe.NewPoseInFrame("world", spatialmath.NewPoseFromPoint(highPointInWorld)),
@@ -404,9 +404,6 @@ func (bc *PieceFinder) CaptureAllFromCamera(ctx context.Context, cameraName stri
 			return ret, fmt.Errorf("PointToPixel failed: %w", err)
 		}
 
-		bc.logger.Infof("temp square %s: s.originalBounds: %v highPoint: %v high x/y: %v %v",
-			label, s.originalBounds, highPoint, highX, highY)
-
 		ret.Detections = append(ret.Detections,
 			objectdetection.NewDetectionWithoutImgBounds(
 				image.Rect(
@@ -421,7 +418,7 @@ func (bc *PieceFinder) CaptureAllFromCamera(ctx context.Context, cameraName stri
 	return ret, nil
 }
 
-func getPickupCenter(o *viz.Object) r3.Vector {
+func GetPickupCenter(o *viz.Object) r3.Vector {
 	md := o.MetaData()
 	center := md.Center()
 
