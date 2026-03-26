@@ -262,7 +262,7 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	if err != nil {
 		return fmt.Errorf("could not grab piece: %w", err)
 	}
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 1500)
 	s.logger.Infof("We grabbed the piece: %v", grabbed)
 
 	// Move up a bit
