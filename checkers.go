@@ -27,8 +27,8 @@ import (
 
 const grabZ = 175.0 // Where I wanted the arm to be
 const gripperGrabZ = 25.0
-const graveyardPosition = r3.Vector{X: 400, Y: -350, Z: 200}
 
+var graveyardPosition = r3.Vector{X: 400, Y: -350, Z: 200}
 var CheckersModel = family.WithModel("checkers")
 
 func init() {
@@ -256,15 +256,19 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 		return nil
 	}
 
+	// So the move must be valid.  
+	// If we captured a piece, we need to move it to the graveyard first
 	if capturedSquare != "" {
 		// Move the captured piece to the graveyard
-		moveToGraveyard(ctx, capturedSquare)
+		err := s.moveToGraveyard(ctx, capturedSquare)
 		if err != nil {
 			return fmt.Errorf("could not move to graveyard: %w", err)
 		}
 		// Don't forget that we'll need to update the game state (remove the captured piece)
 		s.gameState.Pieces[capturedSquare] = PieceInfo{}
 	}
+
+
 	// Go to the "from" square
 	s1Position, err := s.GoToSquare(ctx, move.From)
 	if err != nil {
@@ -495,30 +499,30 @@ func (s *viamCheckers) isValidMove(move Move) (bool, string) {
 	}
 
 	// Check if it's a simple move (one square diagonally)
-	if (toX-fromX) == 1 || (toX-fromX) == -1 {
+	if ((toX-fromX) == 1 || (toX-fromX) == -1) && ((toY-fromY) == 1 || (toY-fromY) == -1) {
 		_, occupied := s.gameState.checkSquare(move.To)
 		return !occupied, "" // Valid if destination is empty
 	}
 
 	// Check if it's a capture (two squares diagonally)
-	if (toX-fromX) == 2 || (toX-fromX) == -2 {
+	if ((toX-fromX) == 2 || (toX-fromX) == -2) && ((toY-fromY) == 2 || (toY-fromY) == -2) {
 		// Get the middle square
 		midX := (fromX + toX) / 2
 		midY := (fromY + toY) / 2
 		midSquare := coordToSquare(midX, midY)
 
 		// Check if there's an opponent's piece to capture
-		capturedPiece, occupied := s.gameState.checkSquare(midSquare)
-		if !occupied || capturedPiece.Color == piece.Color {
-			return false, midSquare
+		pieceToCapture, occupied := s.gameState.checkSquare(midSquare)
+		if !occupied || pieceToCapture.Color == piece.Color {
+			return false, ""
 		}
 
 		// Check if destination is empty
 		_, destOccupied := s.gameState.checkSquare(move.To)
-		return !destOccupied
+		return !destOccupied, midSquare
 	}
 
-	return false
+	return false, ""
 
 }
 
