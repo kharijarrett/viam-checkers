@@ -296,7 +296,7 @@ func (s *viamCheckers) GoToSquare(ctx context.Context, square string) (r3.Vector
 	if err != nil {
 		return r3.Vector{}, fmt.Errorf("could not find position for square %s: %w", square, err)
 	}
-	s.logger.Debugf("Got position for square %s: %v", square, pos)
+	s.logger.Infof("Got position for square %s: %v", square, pos)
 	err = s.moveGripper(ctx, pos)
 	if err != nil {
 		return r3.Vector{}, fmt.Errorf("could not move gripper to square %s at pos %v: %w", square, pos, err)
@@ -374,7 +374,7 @@ func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
 		ComponentName: s.conf.Gripper,
 		Destination:   referenceframe.NewPoseInFrame("world", myPose),
 	})
-	s.logger.Debugf("Moving gripper to pose: %v", myPose)
+	s.logger.Infof("Moving gripper to pose: %v", myPose)
 	if err != nil {
 		return fmt.Errorf("can't move to %v: %w", myPose, err)
 	}
