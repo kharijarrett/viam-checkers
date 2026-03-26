@@ -25,7 +25,8 @@ import (
 	"go.viam.com/utils/trace"
 )
 
-const grabZ = 175.0
+const grabZ = 175.0 // Where I wanted the arm to be
+const gripperGrabZ = -25.0
 
 var CheckersModel = family.WithModel("checkers")
 
@@ -343,7 +344,7 @@ func (s *viamCheckers) findObjectCenter(data viscapture.VisCapture, square strin
 			return r3.Vector{
 				X: center.X,
 				Y: center.Y,
-				Z: grabZ,
+				Z: gripperGrabZ,
 			}, nil
 
 		}
