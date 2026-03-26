@@ -28,7 +28,7 @@ import (
 const grabZ = 175.0 // Where I wanted the arm to be
 const gripperGrabZ = 25.0
 
-var graveyardPosition = r3.Vector{X: 400, Y: -350, Z: 200}
+var graveyardPosition = r3.Vector{X: 400, Y: -350, Z: 100}
 var CheckersModel = family.WithModel("checkers")
 
 func init() {
@@ -251,12 +251,12 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	}()
 
 	valid, capturedSquare := s.isValidMove(move)
-	if !valid{
+	if !valid {
 		s.logger.Errorf("invalid move: %s", move)
 		return nil
 	}
 
-	// So the move must be valid.  
+	// So the move must be valid.
 	// If we captured a piece, we need to move it to the graveyard first
 	if capturedSquare != "" {
 		// Move the captured piece to the graveyard
@@ -267,7 +267,6 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 		// Don't forget that we'll need to update the game state (remove the captured piece)
 		delete(s.gameState.Pieces, capturedSquare)
 	}
-
 
 	// Go to the "from" square
 	s1Position, err := s.GoToSquare(ctx, move.From)
@@ -306,7 +305,7 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	time.Sleep(time.Millisecond * 1000)
 
 	s.logger.Infof("Moved piece from %s to %s", move.From, move.To)
-	s.gameState.update(move)	
+	s.gameState.update(move)
 	s.logger.Infof("Board after move: %s", printBoard(s.gameState))
 
 	return nil
@@ -414,7 +413,7 @@ func (g *GameState) checkSquare(square string) (PieceInfo, bool) {
 	return piece, exists
 }
 
-func printBoard(state GameState) string {
+func printBoard(state GameState) map[string]string {
 	board := make([][]string, 8)
 	for i := range board {
 		board[i] = make([]string, 8)
@@ -438,16 +437,20 @@ func printBoard(state GameState) string {
 		}
 	}
 
-	var b strings.Builder
-	b.WriteString("  a b c d e f g h\n")
+	out := make(map[string]string, 10)
+	out["board"] = "  a b c d e f g h"
+
+	// Key: "8".."1", Value: row contents including leading row number.
 	for i := 7; i >= 0; i-- {
+		rowKey := fmt.Sprintf("%d", i+1)
 		row := fmt.Sprintf("%d ", i+1)
 		for j := 0; j < 8; j++ {
 			row += board[7-i][j] + " "
 		}
-		b.WriteString(row + "\n")
+		out[rowKey] = strings.TrimRight(row, " ")
 	}
-	return strings.TrimRight(b.String(), "\n")
+
+	return out
 }
 
 func coordToSquare(x, y int) string {
@@ -604,7 +607,11 @@ func (s *viamCheckers) DoCommand(ctx context.Context, cmdMap map[string]interfac
 		}
 	}()
 
-	output := map[string]interface{}{"board": printBoard(s.gameState)}
+	boardMap := printBoard(s.gameState)
+	out := make(map[string]interface{}, len(boardMap))
+	for k, v := range boardMap {
+		out[k] = v
+	}
 
-	return output, nil
+	return out, nil
 }

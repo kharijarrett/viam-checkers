@@ -1,6 +1,7 @@
 package viamchess
 
 import (
+	"strconv"
 	"testing"
 
 	"go.viam.com/test"
@@ -21,7 +22,11 @@ func TestInitializeGameState(t *testing.T) {
 
 	// Pretty print the board
 	t.Log("\n===== Board Layout =====")
-	t.Log("\n" + printBoard(state))
+	boardMap := printBoard(state)
+	t.Log("\n" + boardMap["board"])
+	for row := 8; row >= 1; row-- {
+		t.Log(boardMap[strconv.Itoa(row)])
+	}
 }
 
 
