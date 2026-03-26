@@ -357,7 +357,7 @@ func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
 
 	orientation := &spatialmath.OrientationVectorDegrees{
 		OZ:    -1,
-		Theta: -s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta,
+		Theta: s.startPose.Pose().Orientation().OrientationVectorDegrees().Theta,
 	}
 
 	if p.X > 300 {
@@ -370,11 +370,12 @@ func (s *viamCheckers) moveGripper(ctx context.Context, p r3.Vector) error {
 	}
 	s.logger.Infof("The Z value is: %f", p.Z)
 	myPose := spatialmath.NewPose(p, orientation)
+	des := referenceframe.NewPoseInFrame("world", myPose)
+	s.logger.Infof("Moving gripper to pose: %v", des)
 	_, err := s.motion.Move(ctx, motion.MoveReq{
 		ComponentName: s.conf.Gripper,
-		Destination:   referenceframe.NewPoseInFrame("world", myPose),
+		Destination:   des,
 	})
-	s.logger.Infof("Moving gripper to pose: %v", myPose)
 	if err != nil {
 		return fmt.Errorf("can't move to %v: %w", myPose, err)
 	}
