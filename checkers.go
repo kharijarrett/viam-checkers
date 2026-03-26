@@ -27,6 +27,7 @@ import (
 
 const grabZ = 175.0 // Where I wanted the arm to be
 const gripperGrabZ = 25.0
+const graveyardPosition = r3.Vector{X: 400, Y: -350, Z: 200}
 
 var CheckersModel = family.WithModel("checkers")
 
@@ -249,9 +250,20 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 		}
 	}()
 
-	if !s.isValidMove(move){
+	valid, capturedSquare := s.isValidMove(move)
+	if !valid{
 		s.logger.Errorf("invalid move: %s", move)
 		return nil
+	}
+
+	if capturedSquare != "" {
+		// Move the captured piece to the graveyard
+		moveToGraveyard(ctx, capturedSquare)
+		if err != nil {
+			return fmt.Errorf("could not move to graveyard: %w", err)
+		}
+		// Don't forget that we'll need to update the game state (remove the captured piece)
+		s.gameState.Pieces[capturedSquare] = PieceInfo{}
 	}
 	// Go to the "from" square
 	s1Position, err := s.GoToSquare(ctx, move.From)
@@ -280,7 +292,7 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	if err != nil {
 		return fmt.Errorf("could not go to square %s: %w", move.To, err)
 	}
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 500)
 
 	// Release it
 	err = s.gripper.Open(ctx, nil)
@@ -293,6 +305,47 @@ func (s *viamCheckers) MovePiece(ctx context.Context, move Move) error {
 	s.gameState.update(move)	
 	s.logger.Infof("Board after move: %s", printBoard(s.gameState))
 
+	return nil
+}
+
+func (s *viamCheckers) moveToGraveyard(ctx context.Context, square string) error {
+	// Start from "from" square
+	s1Position, err := s.GoToSquare(ctx, square)
+	if err != nil {
+		return fmt.Errorf("could not go to square %s: %w", square, err)
+	}
+	time.Sleep(time.Millisecond * 500)
+
+	// Grab it
+	grabbed, err := s.gripper.Grab(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not grab piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1500)
+	s.logger.Infof("We grabbed the piece: %v", grabbed)
+
+	// Move up a bit
+	err = s.moveGripper(ctx, r3.Vector{X: s1Position.X, Y: s1Position.Y, Z: gripperGrabZ + 200})
+	if err != nil {
+		return fmt.Errorf("could not move up after grabbing: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	// Move to the graveyard
+	err = s.moveGripper(ctx, graveyardPosition)
+	if err != nil {
+		return fmt.Errorf("could not move to graveyard: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	// Release it
+	err = s.gripper.Open(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not release piece: %w", err)
+	}
+	time.Sleep(time.Millisecond * 1000)
+
+	s.logger.Infof("Moved piece to graveyard: %s", square)
 	return nil
 }
 
@@ -409,40 +462,42 @@ func squareToCoord(square string) (int, int, error) {
 	return x, y, nil
 }
 
-func (s *viamCheckers) isValidMove(move Move) bool {
+// isValidMove returns true if the move is valid and also a string for a captured piece square
+// if no piece is captured, the string will be empty
+func (s *viamCheckers) isValidMove(move Move) (bool, string) {
 
 	// Convert square names to coordinates
 	fromX, fromY, err := squareToCoord(move.From)
 	if err != nil {
-		return false
+		return false, ""
 	}
 	toX, toY, err := squareToCoord(move.To)
 	if err != nil {
-		return false
+		return false, ""
 	}
 
 	// Get the piece being moved
 	piece, exists := s.gameState.checkSquare(move.From)
 	if !exists {
-		return false
+		return false, ""
 	}
 
 	// Determine valid direction based on color
 	validMove := false
-	if piece.Color == "black" && toY == fromY+1 {
+	if piece.Color == "black" && piece.Type == "basic" && toY == fromY+1 {
 		validMove = true
-	} else if piece.Color == "white" && toY == fromY-1 {
+	} else if piece.Color == "white" && piece.Type == "basic" && toY == fromY-1 {
 		validMove = true
 	}
 
 	if !validMove {
-		return false
+		return false, ""
 	}
 
 	// Check if it's a simple move (one square diagonally)
 	if (toX-fromX) == 1 || (toX-fromX) == -1 {
 		_, occupied := s.gameState.checkSquare(move.To)
-		return !occupied // Valid if destination is empty
+		return !occupied, "" // Valid if destination is empty
 	}
 
 	// Check if it's a capture (two squares diagonally)
@@ -455,7 +510,7 @@ func (s *viamCheckers) isValidMove(move Move) bool {
 		// Check if there's an opponent's piece to capture
 		capturedPiece, occupied := s.gameState.checkSquare(midSquare)
 		if !occupied || capturedPiece.Color == piece.Color {
-			return false
+			return false, midSquare
 		}
 
 		// Check if destination is empty
