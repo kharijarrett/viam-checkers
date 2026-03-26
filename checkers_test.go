@@ -60,3 +60,5 @@ func printBoard(t *testing.T, state GameState) {
 		t.Log(row)
 	}
 }
+
+
