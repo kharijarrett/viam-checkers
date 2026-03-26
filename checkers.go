@@ -26,7 +26,7 @@ import (
 )
 
 const grabZ = 175.0 // Where I wanted the arm to be
-const gripperGrabZ = -25.0
+const gripperGrabZ = 25.0
 
 var CheckersModel = family.WithModel("checkers")
 
