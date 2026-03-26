@@ -510,6 +510,7 @@ func (s *viamCheckers) isValidMove(move Move) (bool, string) {
 		midX := (fromX + toX) / 2
 		midY := (fromY + toY) / 2
 		midSquare := coordToSquare(midX, midY)
+		s.logger.Infof("Mid square: %s", midSquare)
 
 		// Check if there's an opponent's piece to capture
 		pieceToCapture, occupied := s.gameState.checkSquare(midSquare)
@@ -603,5 +604,7 @@ func (s *viamCheckers) DoCommand(ctx context.Context, cmdMap map[string]interfac
 		}
 	}()
 
-	return nil, nil
+	output := map[string]interface{}{"board": printBoard(s.gameState)}
+
+	return output, nil
 }
